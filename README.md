@@ -1,1 +1,1 @@
-# Statistical-Learning-Machine-Learning Homeworks
+# Statistical Learning / Machine Learning Homeworks
