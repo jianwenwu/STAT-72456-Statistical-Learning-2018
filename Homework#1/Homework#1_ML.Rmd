@@ -1,0 +1,223 @@
+---
+title: 'Homework #1'
+author: "jianwen Wu"
+date: "3/1/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+# 9.This question involves the use of multiple linear regression on the Auto data set.
+```{r,message=F}
+library(ISLR)
+library(tidyverse)
+library(class)
+library(MASS)
+```
+
+```{r}
+data(Auto)
+```
+
+
+####(a) Produce a scatterplot matrix which includes all of the variables in the data set.
+```{r}
+pairs(~ mpg + cylinders + displacement + horsepower + weight + acceleration + year + origin + name, data = Auto)
+```
+
+
+####(b) Compute the matrix of correlations between the variables using the function cor(). You will need to exclude the name variable, which is qualitative.
+```{r}
+cor(Auto[-9])
+```
+
+
+####(c) Use the lm() function to perform a multiple linear regression with mpg as the response and all other variables except name as the predictors. Use the summary() function to print the results. Comment on the output. For instance:
+
+```{r}
+linear_model <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration  + year + origin, data = Auto)
+summary(linear_model)
+```
+
+
+#####i. Is there a relationship between the predictors and the re-sponse?
+* As increase cylinders, horsepower, weight will decrease mpg.  On the other hand, increase displacement, acceleration, year and origin will increase mpg.
+
+
+#####ii. Which predictors appear to have a statistically significant relationship to the response?
+* displacement, weight, year, and origin are statistically significant
+
+
+#####iii. What does the coefficient for the year variable suggest?
+* 0.75 unit increase in mpg for every year
+
+
+####(d) Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?
+
+```{r}
+plot(linear_model)
+```
+* The Residuals vs Fitted Value graph sugguested that there are outliers.  Which are point 323, 326, and 327.
+* In the Residuals vs Leverage, point 14 has high leverage.
+
+
+#### (e) Use the * and : symbols to fit linear regression models with interaction effects. Do any interactions appear to be statistically significant?
+
+```{r}
+linear_model_int <- lm(mpg ~ cylinders + displacement + horsepower * weight + acceleration  + year + origin, data = Auto)
+summary(linear_model_int)
+```
+
+* After adding the interaction of horsepower and weight, we can see that the interaction between horsepower and weight is statistical signficant. 
+
+
+####(f) Try a few different transformations of the variables, such as log(X), √X, X2. Comment on your findings.
+
+```{r}
+linear_model_trans <- lm(mpg ~ cylinders + log(displacement) + poly(horsepower,2) + weight + poly(acceleration,2)  + year + origin, data = Auto)
+summary(linear_model_trans )
+```
+* After adding the log transformations to displacement, square horsepower, and square acceleration, The P-value of those indicated that they are statistical significant.
+
+
+------------------------------------------------------------------------------------------
+
+#10. This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter’s lab, except that it contains 1,089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010
+
+```{r}
+data("Weekly")
+summary(Weekly)
+glimpse(Weekly)
+attach(Weekly)
+```
+
+####(a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+```{r}
+pairs(Weekly)
+```
+* Year and Volume has strong linear relationship. There are no other pattern.
+
+```{r}
+cor(Weekly[-9])
+```
+* Base the correlation matrix, Year vs Volume has the highest correlation 0.8419.
+
+
+####(b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+
+```{r}
+logistics_reg <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, family = binomial, data = Weekly)
+summary(logistics_reg)
+```
+* Base on the result, only variable Lag2 is statiscally significant.
+
+
+####(c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+
+```{r}
+logistics_reg_prob <- predict(logistics_reg, type = "response")
+logistics_reg_pred <- ifelse(logistics_reg_prob > 0.5, "Up", "Down")
+table(logistics_reg_pred, Direction)
+mean(logistics_reg_pred == Direction)#accuary
+mean(mean(logistics_reg_pred != Direction))
+```
+* Base the confusion matrix, the accuary is 56%. Precision is 557 / (557 + 430)  = 56%. Recall is 557 / (557 + 48) = 92%
+
+
+####(d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+
+```{r}
+train <- Weekly %>%
+  filter(Year < 2009)
+test <- Weekly %>%
+  filter (Year  >= 2009)
+
+logistics_reg_2 <- glm(Direction ~ Lag2, family = "binomial", data = train)
+
+logistics_reg_prob_2 <- predict (logistics_reg_2, type = "response", newdata = test)
+
+logistics_reg_pred_2 = ifelse(logistics_reg_prob_2 > 0.5, "Up", "Down")
+DirectionTest <- test$Direction
+table(logistics_reg_pred_2, DirectionTest )
+mean(logistics_reg_pred_2 == DirectionTest )#accuary
+mean(mean(logistics_reg_pred_2 != DirectionTest))
+```
+
+* Base the confusion matrix, the accuary is 63%. Precision is 56 / (34 + 56)  = 63%. Recall is 56 / (56 + 5) = 91%
+
+
+####(e) Repeat (d) using LDA.
+
+```{r}
+LDA <- lda(Direction ~ Lag2, data = train)
+
+LDA_pred <- predict(LDA, newdata = test)
+
+table(LDA_pred$class,DirectionTest)
+mean(LDA_pred$class == DirectionTest)#accuary
+mean(LDA_pred$class != DirectionTest)
+```
+* Base the confusion matrix, the accuary is 63%.
+
+
+####(f) Repeat (d) using QDA.
+
+```{r}
+QDA <- qda(Direction ~ Lag2, data = train)
+QDA_pred <- predict(QDA, newdata = test)
+table(QDA_pred$class,DirectionTest)
+mean(QDA_pred$class == DirectionTest)#accuary
+mean(QDA_pred$class != DirectionTest)
+```
+* Base the confusion matrix, the accuary is 59%.
+
+
+####(g) Repeat (d) using KNN with K = 1
+```{r,message=F}
+library(class)
+```
+
+```{r}
+train_X = as.matrix(train$Lag2)
+test_X = as.matrix(test$Lag2)
+DirectionTrain = train$Direction
+set.seed(123)
+KNN_pred = knn(train = train_X, test = test_X, cl = DirectionTrain, k = 1, prob = F)
+table(KNN_pred , DirectionTest)
+mean(KNN_pred == DirectionTest)#accuary
+```
+* Base the confusion matrix, the accuary is 51%.
+
+
+####(h) Which of these methods appears to provide the best results on this data?
+* Logistics and LDA has same accuary 63%.  Therefore, both are the best of those method.
+
+
+####(i) Experiment with different combinations of predictors, includ- ing possible transformations and interactions, for each of the methods. Report the variables, method, and associated confu- sion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.
+
+```{r}
+train_X = as.matrix(train$Lag2)
+test_X = as.matrix(test$Lag2)
+DirectionTrain = train$Direction
+
+accaury <- vector("double", 10)
+for (i in 1:10) {
+KNN_pred <- knn(train = train_X, test = test_X, cl = DirectionTrain, k = i, prob = F)
+accaury[[i]] = mean(KNN_pred == DirectionTest)
+}
+
+accaury 
+
+knn_accuary_table <- data_frame(k = 1:10, accaury = accaury)
+knn_accuary_table %>%
+  ggplot(aes(k, accaury)) + geom_point() + geom_line()
+```
+
+* Base on the graph, K = 10 has highest accuary.
+
+
+
+
+
+
+
