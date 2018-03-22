@@ -1,0 +1,248 @@
+---
+title: "Homework#2"
+author: "jianwen wu"
+date: "3/19/2018"
+output: html_document
+---
+
+## Problem 4 
+#Suppose we estimate the regression coefficients in a linear regression model by minimizing
+
+$\sum_{i=1}^n (y_i-\beta_0-\sum_{j=1}^p(\beta_jx_{i,j}) + \lambda\sum_{j=1}^p\beta^2_j$
+
+for a particular value of λ. For parts (a) through (e), indicate which of i. through v. is correct. Justify your answer.
+
+### Part a.
+
+##### As we increase λ from 0, the training RSS will:
+
+  i. Increase initially, and then eventually start decreasing in an
+inverted U shape.
+
+  ii. Decrease initially, and then eventually start increasing in a U shape.
+
+  iii. Steadily increase.
+
+  iv. Steadily decrease.
+
+  v. Remain constant.
+
+##### Answer: Steadily increase.  As $\lambda$ increase, force more constraint on $\beta_j$, then $\beta_j$ start reduce to 0. This caused the model became less flexible.  Therefore, the training RSS will Steadily increase.
+
+### Part b.
+
+##### Repeat (a) for test RSS.
+
+##### Answer: Decrease initially, and then eventually start increasing in a U shape.  As $\lambda$ increased, $\beta_j$ start become 0.  The test RSS will improve as the model has less overfitting.  Eventually all $\beta_j$ will be become 0 and test RSS will increase again, and making a U shape.
+
+### Part c.
+
+##### Repeat (a) for variance.
+
+##### Answer: Steadily decrease.  The variances will decrease as more penalty placed on the model.
+
+### Part d.
+
+##### Repeat (a) for (squared) bias.
+
+##### Answer: Steadily increase.  The bias will increase as more penalty placed the model.  The model becomes more flexible.
+
+### Part e.
+
+##### Repeat (a) for the irreducible error.
+
+##### Answer: Remain constant.  The irreducible error will not affect by the model.
+
+--------------------------------------------------------------------------------
+## Problem 9
+
+In this exercise, we will predict the number of applications received using the other variables in the College data set.
+
+```{r, message=F}
+library(ISLR)
+library(tidyverse)
+data(College)
+summary(College)
+```
+
+### Part a.
+
+##### Split the data set into a training set and a test set. 70% train, 30% test
+```{r}
+set.seed(123)
+train <- sample(nrow(College), 0.70*nrow(College))
+test <- -train
+College_train <- College[train,]
+College_test <- College[test,]
+```
+
+### Part b.
+
+##### Fit a linear model using least squares on the training set, and report the test error obtained. use best subset.
+
+```{r}
+library(leaps)
+regfit_full <- regsubsets(Apps ~ ., data = College_train, nvmax = 18) 
+regfit_summary <- summary(regfit_full)
+names(regfit_summary)
+#regfit_summary$outmat
+
+best_subset_by_adjr2 <- which.max(regfit_summary$adjr2)
+best_subset_by_adjr2
+
+best_subset_by_cp <- which.min(regfit_summary$cp)
+best_subset_by_cp
+
+best_subset_by_bic <- which.min(regfit_summary$bic)
+best_subset_by_bic
+
+#Based on adjust squared and CP, those two sugguest 14-variables model are the best. While BIC sugguest 10 variables is better.
+coef(regfit_full ,14)
+
+#In this case, I will use 14 varibales since adjust squared and CP both sugguest that.
+obs <- College_test$Apps
+
+test_mat<-model.matrix(Apps ~ ., data = College_test)
+
+
+predict.regsubsets <- function(model, id,obs){
+    coefi = coef(model, id)
+    pred = test_mat[,names(coefi)]%*%coefi 
+    return (mean((obs-pred)^2))
+    } 
+best_sub_MSE <- predict.regsubsets(regfit_full, id = 14, obs)
+best_sub_MSE
+```
+##### The test MSE is 1292477 with 14 variables linear model.
+
+
+### Part c.
+##### Fit a ridge regression model on the training set, with λ chosen by cross-validation. Report the test error obtained.
+
+```{r, message=F}
+library(glmnet)
+```
+
+```{r}
+set.seed(123)
+library(glmnet)
+grid = 10^(seq(10,-2,length = 100))
+train_matrix <- model.matrix(Apps~., data = College_train)
+test_matrix <- model.matrix(Apps~., data = College_test)
+ridge_model <- glmnet(train_matrix, College_train$Apps, alpha = 0, lambda = grid, thresh = 1e-12 )
+cv_ridge_model <- cv.glmnet(train_matrix, College_train$Apps, alpha = 0,
+                         lambda = grid, thresh = 1e-12)
+best_lambda_ridge <- cv_ridge_model$lambda.min
+best_lambda_ridge
+ridge_predict <- predict(ridge_model, newx = test_matrix, s = best_lambda_ridge)
+ridge_MSE <- mean((College_test$Apps - ridge_predict)^2)
+ridge_MSE
+```
+The best lambda for ridge is 0.01. The test MSE is 1287434.
+
+
+### Part d.
+
+##### Fit a lasso model on the training set, with λ chosen by cross- validation. Report the test error obtained, along with the num-ber of non-zero coefficient estimates.
+
+```{r}
+set.seed(123)
+lasso_model <- glmnet(train_matrix, College_train$Apps, alpha = 1, lambda = grid, thresh = 1e-12)
+cv_lasso_model <- cv.glmnet(train_matrix, College_train$Apps, alpha = 1, lambda = grid, thresh = 1e-12) 
+best_lambda_lasso <- cv_lasso_model$lambda.min
+best_lambda_lasso
+lasso_predict <- predict(lasso_model, newx = test_matrix, s = best_lambda_lasso)
+lasso_MSE <- mean((College_test$Apps - lasso_predict)^2)
+lasso_MSE
+#non-zero coefficient estimates
+predict(lasso_model, s = best_lambda_lasso, type = "coefficients")
+```
+The best lambda for lasso is 32.74549 and the test MES is  1284066.
+
+
+### Part e.
+
+##### Fit a PCR model on the training set, with M chosen by cross- validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+```{r, message=F}
+library(pls)
+```
+
+```{r}
+set.seed(123)
+pcr_model <- pcr(Apps ~., data = College_train, scale = T, validation = "CV")
+validationplot(pcr_model,val.type="MSEP")
+```
+
+##### The number of components is 10 with best MSEP
+
+```{r}
+pcr_predict <- predict(pcr_model, College_test, ncomp = 10)
+pcr_MSE <- mean((College_test$Apps - pcr_predict)^2)
+pcr_MSE
+```
+The test MSE is 1699191 with ncomp = 10
+
+
+### Part f.
+
+##### Fit a PLS model on the training set, with M chosen by cross- validation. Report the test error obtained, along with the value of M selected by cross-validation.
+
+```{r}
+set.seed(123)
+pls_model <- plsr(Apps ~ ., data = College_train, scale = TRUE, validation = "CV")
+validationplot(pls_model, val.type = "MSEP")
+```
+
+##### The number of components is 10 with best MSEP.
+
+```{r}
+pls_predict <- predict(pls_model, College_test, ncomp = 10)
+pls_MSE <- mean((College_test$Apps - pls_predict)^2)
+pls_MSE
+```
+
+##### The test MSE is 1275361 with ncomp = 10
+
+
+### part g.
+
+##### Comment on the results obtained. How accurately can we pre-dict the number of college applications received? Is there much difference among the test errors resulting from these five ap-proaches?
+
+```{r}
+MSE_df <- tibble(
+  model = factor(c("OLS", "Ridge", "Lasso", "PCR", "PLS"), levels = c("OLS", "Ridge", "Lasso", "PCR", "PLS")), MSE = c(best_sub_MSE, ridge_MSE, lasso_MSE,pcr_MSE, pls_MSE))
+MSE_df %>% ggplot(aes(model, MSE)) +
+  geom_col(aes(fill = model))
+  
+           
+```
+
+#### $R^2 =  1 - \frac{\sum(y_i-y_p)^2} {\sum(y_i - y_m)^2}$
+
+* y_p is y predict of test set
+* y_m is average of Apps in test set
+
+```{r}
+test_avg <- mean(College_test$Apps)
+ols_r2 <- 1 - best_sub_MSE / mean((test_avg - College_test$Apps)^2)
+ridge_r2 <- 1 - mean((ridge_predict - College_test$Apps)^2) / mean((test_avg - College_test$Apps)^2)
+lasso_r2 <- 1 - mean((lasso_predict - College_test$Apps)^2) / mean((test_avg - College_test$Apps)^2)
+pcr_r2 <- 1 - mean((pcr_predict - College_test$Apps)^2) / mean((test_avg - College_test$Apps)^2)
+pls_r2 <- 1 - mean((pls_predict - College_test$Apps)^2) / mean((test_avg - College_test$Apps)^2)
+
+r2_df <- tibble(
+  model = factor(c("OLS", "Ridge", "Lasso", "PCR", "PLS"), levels = c("OLS", "Ridge", "Lasso", "PCR", "PLS")), R_Squared = c(ols_r2, ridge_r2, lasso_r2, pcr_r2, pls_r2))
+
+                
+r2_df %>% ggplot(aes(model, R_Squared)) +
+  geom_col(aes(fill = model))               
+
+```
+
+##### In term of Test MSE, the OLS, Ridge, Lasso, PLS models have around same MSE.
+
+##### In term of R Squared, the OLS, Ridge, Lasso, PLS models explain around 87.5% of variances.  While PCR only explains around 84% of variances.
+
+##### Therefore, OLS, Ridge, Lasso, PLS models did pretty good jobs on predicting college applications.
+
