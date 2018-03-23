@@ -21,19 +21,19 @@ data(Auto)
 ```
 
 
-####(a) Produce a scatterplot matrix which includes all of the variables in the data set.
+#### (a) Produce a scatterplot matrix which includes all of the variables in the data set.
 ```{r}
 pairs(~ mpg + cylinders + displacement + horsepower + weight + acceleration + year + origin + name, data = Auto)
 ```
 
 
-####(b) Compute the matrix of correlations between the variables using the function cor(). You will need to exclude the name variable, which is qualitative.
+#### (b) Compute the matrix of correlations between the variables using the function cor(). You will need to exclude the name variable, which is qualitative.
 ```{r}
 cor(Auto[-9])
 ```
 
 
-####(c) Use the lm() function to perform a multiple linear regression with mpg as the response and all other variables except name as the predictors. Use the summary() function to print the results. Comment on the output. For instance:
+#### (c) Use the lm() function to perform a multiple linear regression with mpg as the response and all other variables except name as the predictors. Use the summary() function to print the results. Comment on the output. For instance:
 
 ```{r}
 linear_model <- lm(mpg ~ cylinders + displacement + horsepower + weight + acceleration  + year + origin, data = Auto)
@@ -41,19 +41,19 @@ summary(linear_model)
 ```
 
 
-#####i. Is there a relationship between the predictors and the re-sponse?
+##### i. Is there a relationship between the predictors and the re-sponse?
 * As increase cylinders, horsepower, weight will decrease mpg.  On the other hand, increase displacement, acceleration, year and origin will increase mpg.
 
 
-#####ii. Which predictors appear to have a statistically significant relationship to the response?
+##### ii. Which predictors appear to have a statistically significant relationship to the response?
 * displacement, weight, year, and origin are statistically significant
 
 
-#####iii. What does the coefficient for the year variable suggest?
+##### iii. What does the coefficient for the year variable suggest?
 * 0.75 unit increase in mpg for every year
 
 
-####(d) Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?
+#### (d) Use the plot() function to produce diagnostic plots of the linear regression fit. Comment on any problems you see with the fit. Do the residual plots suggest any unusually large outliers? Does the leverage plot identify any observations with unusually high leverage?
 
 ```{r}
 plot(linear_model)
@@ -72,7 +72,7 @@ summary(linear_model_int)
 * After adding the interaction of horsepower and weight, we can see that the interaction between horsepower and weight is statistical signficant. 
 
 
-####(f) Try a few different transformations of the variables, such as log(X), √X, X2. Comment on your findings.
+#### (f) Try a few different transformations of the variables, such as log(X), √X, X2. Comment on your findings.
 
 ```{r}
 linear_model_trans <- lm(mpg ~ cylinders + log(displacement) + poly(horsepower,2) + weight + poly(acceleration,2)  + year + origin, data = Auto)
@@ -83,7 +83,7 @@ summary(linear_model_trans )
 
 ------------------------------------------------------------------------------------------
 
-#10. This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter’s lab, except that it contains 1,089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010
+# 10. This question should be answered using the Weekly data set, which is part of the ISLR package. This data is similar in nature to the Smarket data from this chapter’s lab, except that it contains 1,089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010
 
 ```{r}
 data("Weekly")
@@ -92,7 +92,7 @@ glimpse(Weekly)
 attach(Weekly)
 ```
 
-####(a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
+#### (a) Produce some numerical and graphical summaries of the Weekly data. Do there appear to be any patterns?
 ```{r}
 pairs(Weekly)
 ```
@@ -104,7 +104,7 @@ cor(Weekly[-9])
 * Base the correlation matrix, Year vs Volume has the highest correlation 0.8419.
 
 
-####(b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
+#### (b) Use the full data set to perform a logistic regression with Direction as the response and the five lag variables plus Volume as predictors. Use the summary function to print the results. Do any of the predictors appear to be statistically significant? If so, which ones?
 
 ```{r}
 logistics_reg <- glm(Direction ~ Lag1 + Lag2 + Lag3 + Lag4 + Lag5 + Volume, family = binomial, data = Weekly)
@@ -113,7 +113,7 @@ summary(logistics_reg)
 * Base on the result, only variable Lag2 is statiscally significant.
 
 
-####(c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
+#### (c) Compute the confusion matrix and overall fraction of correct predictions. Explain what the confusion matrix is telling you about the types of mistakes made by logistic regression.
 
 ```{r}
 logistics_reg_prob <- predict(logistics_reg, type = "response")
@@ -125,7 +125,7 @@ mean(mean(logistics_reg_pred != Direction))
 * Base the confusion matrix, the accuary is 56%. Precision is 557 / (557 + 430)  = 56%. Recall is 557 / (557 + 48) = 92%
 
 
-####(d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
+#### (d) Now fit the logistic regression model using a training data period from 1990 to 2008, with Lag2 as the only predictor. Compute the confusion matrix and the overall fraction of correct predictions for the held out data (that is, the data from 2009 and 2010).
 
 ```{r}
 train <- Weekly %>%
@@ -147,7 +147,7 @@ mean(mean(logistics_reg_pred_2 != DirectionTest))
 * Base the confusion matrix, the accuary is 63%. Precision is 56 / (34 + 56)  = 63%. Recall is 56 / (56 + 5) = 91%
 
 
-####(e) Repeat (d) using LDA.
+#### (e) Repeat (d) using LDA.
 
 ```{r}
 LDA <- lda(Direction ~ Lag2, data = train)
@@ -161,7 +161,7 @@ mean(LDA_pred$class != DirectionTest)
 * Base the confusion matrix, the accuary is 63%.
 
 
-####(f) Repeat (d) using QDA.
+#### (f) Repeat (d) using QDA.
 
 ```{r}
 QDA <- qda(Direction ~ Lag2, data = train)
@@ -173,7 +173,7 @@ mean(QDA_pred$class != DirectionTest)
 * Base the confusion matrix, the accuary is 59%.
 
 
-####(g) Repeat (d) using KNN with K = 1
+#### (g) Repeat (d) using KNN with K = 1
 ```{r}
 train_X = as.matrix(train$Lag2)
 test_X = as.matrix(test$Lag2)
@@ -186,11 +186,11 @@ mean(KNN_pred == DirectionTest)#accuary
 * Base the confusion matrix, the accuary is 51%.
 
 
-####(h) Which of these methods appears to provide the best results on this data?
+#### (h) Which of these methods appears to provide the best results on this data?
 * Logistics and LDA has same accuary 63%.  Therefore, both are the best of those method.
 
 
-####(i) Experiment with different combinations of predictors, includ- ing possible transformations and interactions, for each of the methods. Report the variables, method, and associated confu- sion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.
+#### (i) Experiment with different combinations of predictors, includ- ing possible transformations and interactions, for each of the methods. Report the variables, method, and associated confu- sion matrix that appears to provide the best results on the held out data. Note that you should also experiment with values for K in the KNN classifier.
 
 ```{r}
 train_X = as.matrix(train$Lag2)
