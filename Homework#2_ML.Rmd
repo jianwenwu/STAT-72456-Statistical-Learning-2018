@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ## Problem 4 
-#Suppose we estimate the regression coefficients in a linear regression model by minimizing
+### Suppose we estimate the regression coefficients in a linear regression model by minimizing
 
 $\sum_{i=1}^n (y_i-\beta_0-\sum_{j=1}^p(\beta_jx_{i,j}) + \lambda\sum_{j=1}^p\beta^2_j$
 
