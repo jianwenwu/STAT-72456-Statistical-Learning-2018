@@ -1,0 +1,243 @@
+---
+title: "Homework#3"
+author: "jianwen wu"
+date: "3/28/2018"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+## Problem 9
+
+### This problem involves the OJ data set which is part of the ISLR package.
+```{r, message=FALSE}
+library(tidyverse)
+library(ISLR)
+library(tree)
+data(OJ)
+```
+
+
+### Part a. 
+
+Create a training set containing a random sample of 800 obser-vations, and a test set containing the remaining observations.
+
+```{r}
+set.seed(123)
+train <- sample(nrow(OJ), 800)
+test <- -train
+train_OJ <- OJ[train,]
+test_OJ <- OJ[test,]
+```
+
+```{r}
+#make we evenly separete the data for each class by STORE
+train_OJ %>%
+  count(Purchase) %>%
+  mutate(prop = prop.table(n))
+test_OJ %>%
+  count(Purchase) %>%
+  mutate(prop = prop.table(n))
+```
+
+
+### Part b.
+
+Fit a tree to the training data, with Purchase as the response and the other variables except for Buy as predictors. Use the summary() function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?
+
+```{r}
+tree_oj <- tree(Purchase ~., data = train_OJ)
+summary(tree_oj)
+```
+The tree has 10 terminal nodes with training error rate 0.1612
+
+
+### Part c.
+
+Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.
+
+```{r}
+tree_oj
+```
+Node label 9 is terminal node as indicated by *. The split criterion is LoyalCH > 0.0356415.  This sub-tree has 116 observations with deviance of 106.600.  The Overall prediction of this sub-tree is MM.  About 17% of observations as CH, and 83% of observations as MM. 
+
+
+### Part d.
+
+Create a plot of the tree, and interpret the results.
+
+```{r fig.height=10, fig.width=10}
+plot(tree_oj)
+text(tree_oj, pretty=0)
+```
+
+Based on the plot abovem the most important splitting variables is LoyalCH.  The reason is the top 3 nodes have splitting variable LoyalCH.
+
+
+### Part e.
+Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?
+
+```{r}
+tree_pred <- predict(tree_oj, test_OJ, type = "class") #set it as class for classfication
+test_outcome <- test_OJ$Purchase
+table(test_outcome, tree_pred)
+mean(tree_pred != test_outcome)# test error
+```
+The test error rate is 0.1777778.
+
+
+### Part f.
+
+Apply the cv.tree() function to the training set in order to determine the optimal tree size.
+
+```{r}
+set.seed(3)
+# use prune.missclassification technique/default is leave one out of validation
+cv_tree_oj <- cv.tree(tree_oj,FUN = prune.misclass) 
+cv_tree_oj
+```
+
+
+### Part g.
+
+Produce a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis.
+
+```{r}
+plot(cv_tree_oj$size, cv_tree_oj$dev, type = "b", xlab = "Tree Size", ylab = "Deviance")
+```
+
+
+### Part h.
+
+Which tree size corresponds to the lowest cross-validated classi- fication error rate?
+
+Based on the plot, Size of 5 has the lowest error.
+
+
+### Part i.
+
+Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation. If cross-validation does not lead to selection of a pruned tree, then create a pruned tree with five terminal nodes.
+
+```{r}
+#we decided our tree size be 5
+prune_tree_oj <- prune.misclass(tree_oj, best = 5)
+plot(prune_tree_oj)
+text(prune_tree_oj, pretty = 0)
+```
+
+
+### Part j.
+
+Compare the training error rates between the pruned and un-pruned trees. Which is higher?
+
+```{r}
+summary(tree_oj)
+summary(prune_tree_oj)
+```
+
+The training error rates of prune tree is higher than un-pruned tree.  0.7289 for un-pruned tree and 0.8206 for pruned tree.  The reason is model of pruned tree is more flexiable compared to model of un-pruned tree.
+
+
+### Part k.
+
+Compare the test error rates between the pruned and unpruned trees. Which is higher?
+
+```{r}
+unpruned_tree_error <- mean(tree_pred != test_outcome)
+unpruned_tree_error
+
+prune_tree_pred <- predict(prune_tree_oj, test_OJ, type = "class")
+table(test_outcome, prune_tree_pred)
+prune_tree_error <- mean(prune_tree_pred != test_outcome)
+prune_tree_error
+```
+
+The test error rates of un-pruned tree is 0.1777778 and test error rates of pruned tree is 0.1740741.  The test error rates of pruned tree is slighly lower than test error rates of un-pruned tree.  The reason is model of prune tree is less overfitted compare to un-prune tree.
+
+
+--------------------------------------------------------------------------------------------------------------------------
+## Problem 12
+
+### Apply boosting, bagging, and random forests to the data set you chose in the previous problem. Be sure to fit all the models on a training set and to evaluate their performance on a test set. How accurate are the results compared to the simple tree model you used? Which of the approaches yields the best performance?
+
+
+```{r, message=FALSE}
+library(gbm)
+library(randomForest)
+# MM is 0 and CH is 1
+train_OJ$Purchase <- ifelse(train_OJ$Purchase == "MM", 0,1)
+test_OJ$Purchase <- ifelse(test_OJ$Purchase == "MM", 0,1)
+
+```
+
+
+#### Boosting / MM is 0 and CH is 1
+```{r}
+test_outcome_ <- test_OJ$Purchase
+boosting_tree_oj  <- gbm(Purchase ~ ., data = train_OJ, 
+                         distribution = "bernoulli", n.tree = 5000)
+boosting_tree_probs <- predict(boosting_tree_oj, newdata = test_OJ, n.trees = 5000)
+boost_tree_pred <- ifelse(boosting_tree_probs > 0.5, 1, 0)
+table(test_outcome_, boost_tree_pred)
+boosting_tree_test_error <- mean(test_outcome_ != boost_tree_pred )
+boosting_tree_test_error
+```
+The test error for Boosting is 0.1851852
+
+
+#### Bagging 
+
+```{r}
+train_OJ$Purchase <- as.factor(train_OJ$Purchase)
+test_OJ$Purchase <- as.factor(test_OJ$Purchase)
+#Bagging  is very specical case for random forest(with m = p | use all the predictors)
+#In this case, P = 17
+bagging_tree_oj <- randomForest(Purchase ~., data = train_OJ, mtry = 17, importance = T)
+#importance = T allow you to see which variables are important
+bagging_tree_pred <- predict(bagging_tree_oj, newdata = test_OJ)
+table(test_outcome_, bagging_tree_pred)
+bagging_tree_test_error <- mean(test_outcome_ != bagging_tree_pred)
+bagging_tree_test_error
+```
+The test error for Bagging  is 0.2074074
+
+
+### RandomForests
+
+```{r}
+RandomForest_tree_oj <- randomForest(Purchase ~., data = train_OJ, mtry = 4, 
+                                     importance = T)
+#importance = T allow you to see which variables are important
+bagging_tree_pred <- predict(RandomForest_tree_oj, newdata = test_OJ)
+table(test_outcome_, bagging_tree_pred)
+RandomForest_tree_test_error <- mean(test_outcome_ != bagging_tree_pred )
+RandomForest_tree_test_error
+```
+The test error for Random Forests  is 0.2037037.
+
+
+### Conclusion
+
+```{r}
+unpruned_tree_error
+prune_tree_error
+boosting_tree_test_error
+bagging_tree_test_error
+RandomForest_tree_test_error
+
+error_df <- tibble(
+model = factor(c("unpruned", "pruned", "boosting", "bagging", "random_forest"),
+               levels = c("unpruned", "pruned", "boosting", 
+                          "bagging", "random_forest")),
+test_error = c(unpruned_tree_error, prune_tree_error, 
+               boosting_tree_test_error, bagging_tree_test_error,
+               RandomForest_tree_test_error))
+
+error_df %>%
+  ggplot(aes(model, test_error)) + geom_col(aes(fill = model))
+```
+
+The best result is prune tree, because it has the lowest error rate.
+
+
