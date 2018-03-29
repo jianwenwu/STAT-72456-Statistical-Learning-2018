@@ -18,7 +18,7 @@ data(OJ)
 ```
 
 
-###Part a. 
+### Part a. 
 
 Create a training set containing a random sample of 800 obser-vations, and a test set containing the remaining observations.
 
