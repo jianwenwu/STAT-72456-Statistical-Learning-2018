@@ -1,0 +1,109 @@
+---
+title: "Homework#4"
+author: "Jianwen Wu"
+date: "5/2/2018"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+
+## Problem 7
+
+### In this problem, you will use support vector approaches in order to predict whether a given car gets high or low gas mileage based on the Auto data set.
+
+```{r, message=FALSE}
+library(tidyverse)
+library(ISLR)
+library(e1071)
+data("Auto")
+```
+
+
+### part a.
+
+Create a binary variable that takes on a 1 for cars with gas mileage above the median, and a 0 for cars with gas mileage below the median.
+
+```{r}
+gas_med = median(Auto$mpg)
+Auto <- Auto %>%
+  mutate(mpg_level = ifelse(mpg > gas_med, 1, 0))
+Auto$mpg_level <- as.factor(Auto$mpg_level)
+```
+
+
+### Part b
+
+Fit a support vector classifier to the data with various values of cost, in order to predict whether a car gets high or low gas mileage. Report the cross-validation errors associated with dif- ferent values of this parameter. Comment on your results.
+
+```{r}
+tune_SVM_linear <- tune(svm, mpg_level ~ ., data = Auto, kernel = "linear", ranges = list(cost = c(0.01, 0.1, 1, 5, 10, 100, 1000)))
+summary(tune_SVM_linear)
+tune_SVM_linear$best.parameters
+tune_SVM_linear$best.performance
+```
+
+Based on the result, cost at 1 performed the best with cross validation error 0.01025641.
+
+
+### Part c.
+
+Now repeat (b), this time using SVMs with radial and polynomial basis kernels, with different values of gamma and degree and cost. Comment on your results.
+
+#### Polynomial
+```{r}
+tune_SVM_poly = tune(svm, mpg_level ~ ., data = Auto, kernel = "polynomial", ranges = list(cost = c(0.1, 
+    1, 5, 10), degree = c(2, 3, 4, 5)))
+summary(tune_SVM_poly)
+tune_SVM_poly$best.parameters
+tune_SVM_poly$best.performance
+```
+
+Based on the result, cost at 10 and degree at 2 performed the best with cross validation error 0.5380769
+
+#### Radial
+
+```{r}
+tune_SVM_radial = tune(svm, mpg_level ~ ., data = Auto, kernel = "radial", ranges = list(cost = c(0.1, 
+    1, 5, 10), gamma = c(0.01, 0.1, 1, 5, 10, 100)))
+summary(tune_SVM_radial)
+tune_SVM_radial$best.parameters
+tune_SVM_radial$best.performance
+```
+
+Based on the result, cost at 10 and gamma at 0.01 performed the best with cross validation error 0.02564103.
+
+
+### Part d.
+
+Make some plots to back up your assertions in (b) and (c).
+
+```{r}
+SVM_linear <- svm(mpg_level ~ ., data = Auto, kernel = "linear", cost = 1)
+SVM_poly <- svm(mpg_level ~ ., data = Auto, kernel = "polynomial", cost = 10, degree = 2)
+SVM_radial <- svm(mpg_level ~ ., data = Auto, kernel = "radial", cost = 10, gamma = 0.01)
+plotpairs = function(fit) {
+    for (name in names(Auto)[!(names(Auto) %in% c("mpg", "mpg_level", "name"))]) {
+        plot(fit, Auto, as.formula(paste("mpg~", name, sep = "")))
+    }
+}
+```
+
+#### Linear SVM Plot
+```{r}
+plotpairs(SVM_linear)
+```
+
+#### Ploy SVM Plot
+
+```{r}
+plotpairs(SVM_poly)
+
+
+```
+
+### Radical SVM Plot
+```{r}
+plotpairs(SVM_radial)
+
+```
