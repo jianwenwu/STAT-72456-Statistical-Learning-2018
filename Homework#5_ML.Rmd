@@ -1,0 +1,64 @@
+---
+title: "Homework#5_ML"
+author: "jianwen wu"
+date: "5/10/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+## Problem 9. 
+
+Consider the USArrests data. We will now perform hierarchical clus- tering on the states.
+
+```{r}
+library(tidyverse)
+library(ISLR)
+data(USArrests)
+```
+
+
+### Part a.
+
+Using hierarchical clustering with complete linkage and Euclidean distance, cluster the states
+
+```{r}
+HC_complete <- hclust(dist(USArrests), method = "complete")
+plot(HC_complete)
+```
+
+
+### Part b.
+
+Cut the dendrogram at a height that results in three distinct clusters. Which states belong to which clusters?
+
+```{r}
+cutree(HC_complete, 3)
+table(cutree(HC_complete, 3))
+```
+
+
+
+
+### Part c.
+
+Hierarchically cluster the states using complete linkage and Eu- clidean distance, after scaling the variables to have standard de- viation one.
+
+```{r}
+scale_data = scale(USArrests)
+HC_S_complete = hclust(dist(scale_data), method="complete")
+plot(HC_S_complete)
+```
+
+
+### Part d.
+
+What effect does scaling the variables have on the hierarchical clustering obtained? In your opinion, should the variables be scaled before the inter-observation dissimilarities are computed? Provide a justification for your answer.
+
+```{r}
+cutree(HC_S_complete, 3)
+table(cutree(HC_S_complete, 3))
+table(cutree(HC_S_complete, 3), cutree(HC_complete, 3))
+```
+
+Scalling the variables affects the max height of the dendogram obtained from the hierachical clustering.  I think the variables should be scaled, because data measures have different unit. For example, X1 has range from 100 to 1000 and X2 has range from 1 to 20.
