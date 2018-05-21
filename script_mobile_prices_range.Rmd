@@ -1,0 +1,430 @@
+---
+title: "Predict Mobile Price Ranges - Final Project"
+author: "jianwen wu"
+date: "5/15/2018"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+id:ID
+
+battery_power:Total energy a battery can store in one time measured in mAh
+
+blue:Has bluetooth or not
+
+clock_speed:speed at which microprocessor executes instructions
+
+dual_sim:Has dual sim support or not
+
+fc:Front Camera mega pixels
+
+four_g:Has 4G or not
+
+int_memory:Internal Memory in Gigabytes
+
+m_dep:Mobile Depth in cm
+
+mobile_wt:Weight of mobile phone
+
+n_cores:Number of cores of processor
+
+pc:Primary Camera mega pixels
+
+px_height:Pixel Resolution Height
+
+px_width:Pixel Resolution Width
+
+ram:Random Access Memory in Megabytes
+
+sc_h:Screen Height of mobile in cm
+
+sc_w:Screen Width of mobile in cm
+
+talk_time:longest time that a single battery charge will last when you are
+
+three_g:Has 3G or not
+
+touch_screen:Has touch screen or not
+
+wifi:Has wifi or not
+
+```{r Load Packages, message=F}
+library(tidyverse)
+library(h2o)
+library(magrittr)
+```
+
+```{r Load Data, message=F}
+data <- read_csv("train.csv")
+```
+
+```{r}
+summary(data)
+```
+```{r}
+glimpse(data)
+```
+### Convert Some Variables to Factor
+```{r}
+cols <- c("blue", "dual_sim", "four_g", "three_g", "touch_screen", "wifi", "price_range")
+data %<>% mutate_at(cols, funs(factor(.)))
+glimpse(data)
+```
+
+### How does batter power affect the price range
+```{r}
+data %>%
+  ggplot(mapping = aes(x = price_range, y = battery_power)) +
+  geom_boxplot(aes(fill = price_range)) +
+  labs(title = "The Effect of Batter Power on Price Range", x = "Price Range", y = "Battery Power")+
+  theme(plot.title = element_text(hjust = 0.5), legend.position="none") +
+  coord_flip() 
+  
+```
+
+
+###How does internal memory affect the price range
+```{r}
+data %>%
+  ggplot(mapping = aes(x = price_range, y = int_memory)) +
+  geom_boxplot(aes(fill = price_range)) +
+  labs(title = "The Effect of Internal Memory on Price Range", x = "Price Range", y = "Internal Memory")+
+  theme(plot.title = element_text(hjust = 0.5), legend.position="none") +
+  coord_flip()
+  
+```
+
+
+### ratio of phone that has 4g vs not. ratio of phone that has 3g vs not. ratio touch screen vs not
+```{r}
+data %>%
+  count(four_g) %>%
+  mutate(percentage = n/sum(n))
+data %>%
+  count(three_g) %>%
+  mutate(percentage = n/sum(n))
+
+```
+
+```{r}
+data %>%
+  count(four_g) %>%
+  mutate(percentage = n/sum(n)) %>%
+  ggplot(aes(x = four_g, y = percentage)) +
+  geom_col(aes(fill = four_g)) +
+  labs(title = "Does the Mobile Phone Support 4G?", x = NULL, y = "Percentage")+
+  theme(plot.title = element_text(hjust = 0.5), legend.position="none") +
+  scale_x_discrete(labels =  c("No", "Yes")) +
+  scale_y_continuous(labels = scales::percent)
+
+data %>%
+  count(three_g) %>%
+  mutate(percentage = n/sum(n)) %>%
+  ggplot(aes(x = three_g, y = percentage)) +
+  geom_col(aes(fill = three_g)) +
+  labs(title = "Does the Mobile Phone Support 3G?", x = NULL, y = "Percentage")+
+  theme(plot.title = element_text(hjust = 0.5), legend.position="none") +
+  scale_x_discrete(labels =  c("No", "Yes")) +
+  scale_y_continuous(labels = scales::percent)
+```
+
+### Graph the Targer Varible(Prices Range)
+```{r}
+data %>%
+  group_by(price_range) %>%
+  summarise(n = n()) %>%
+  mutate(pct = n/sum(n)) %>%
+  ggplot(aes(x = price_range, y = n)) +
+  geom_col(aes(fill = price_range)) +
+  labs(title = "Distribution of Price Range", x = "Price Range", y = "Count")+
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+# DATA ANALYSIS
+
+### Split the Data, 90% train, 10% validation and 10% test.
+```{r load h2o, message=F}
+h2o.init()
+h2o_data <- as.h2o(data)
+
+split <- h2o.splitFrame(data = h2o_data ,
+    ratios = c(0.80,0.1), seed = 123)
+
+h2o_data_train <- split[[1]]
+h2o_data_valid <- split[[2]]
+h2o_data_test <- split[[3]]
+#set names for h2o
+y <- "price_range"
+x <- setdiff(names(h2o_data_train), y)
+
+```
+
+
+### General Linear Model(Multi-Classification)
+```{r}
+h2o_fit_glm = h2o.glm(training_frame = h2o_data_train, y = y,
+x = x, validation_frame = h2o_data_valid, family="multinomial" ,seed = 123)
+```
+
+#### Print the training metrics
+```{r}
+h2o_fit_glm@model$training_metrics
+```
+
+#### Print the validation metrics
+```{r}
+h2o_fit_glm@model$validation_metrics
+```
+
+#### Confusion Matrics for training model and validation model
+```{r}
+h2o.confusionMatrix(h2o_fit_glm, valid = F)
+h2o.confusionMatrix(h2o_fit_glm, valid = T)
+```
+
+### General Linear Model with Regularization.
+```{r}
+h2o_fit_glm_ref = h2o.glm(training_frame = h2o_data_train, y = y,
+x = x, validation_frame = h2o_data_valid, lambda_search = T, family="multinomial" ,seed = 123)
+#set lambda_search = T, it will find the best lambda for me.  
+#lamaba is regularization strength
+```
+
+#### Print the best lambda and model summary
+```{r}
+h2o_fit_glm_ref@model$lambda_best
+h2o_fit_glm_ref@model$model_summary
+```
+
+
+#### Print the training metrics
+```{r}
+h2o_fit_glm_ref@model$training_metrics
+```
+
+#### Print the validation metrics
+```{r}
+h2o_fit_glm_ref@model$validation_metrics
+```
+
+#### Confusion Matrics for training model and validation model
+```{r}
+h2o.confusionMatrix(h2o_fit_glm_ref, valid = F)
+h2o.confusionMatrix(h2o_fit_glm_ref, valid = T)
+```
+
+
+### Gradient Boosting Machine
+```{r}
+h2o_fit_gmb <- h2o.gbm(y = y, x = x,
+           distribution="multinomial",#for multi-classification
+           training_frame = h2o_data_train,
+           validation_frame = h2o_data_valid,
+           seed = 1233)
+```
+
+#### summary of the model
+
+```{r}
+h2o_fit_gmb@model$model_summary
+```
+
+#### Print the training metrics and validation metrics
+```{r}
+h2o_fit_gmb
+```
+#### Confusion matrics for training and validation
+```{r}
+h2o.confusionMatrix(h2o_fit_gmb, valid = F)
+h2o.confusionMatrix(h2o_fit_gmb, valid = T)
+```
+
+#### Variable Importances
+```{r}
+h2o.varimp(h2o_fit_gmb)
+variable_importances_df <-  data.frame(h2o.varimp(h2o_fit_gmb))
+
+variable_importances_df %>%
+  ggplot(aes(x = fct_reorder(variable,desc(scaled_importance)) , y =scaled_importance)) + 
+  geom_col() +
+  labs(y = "Variable Importances", x = NULL) +
+  coord_flip()
+```
+
+
+### Tuning Parameter/Grid Search
+```{r}
+ntrees_opt <- c(50,100,150,200,300)
+maxdepth_opt <- c(3,4,5,6,7)
+learnrate_opt <- c(0.1,0.2)
+
+parameters <- list(ntrees=ntrees_opt,
+    max_depth=maxdepth_opt, learn_rate=learnrate_opt)
+
+grid_gbm_1 <- h2o.grid(grid_id = "g1",
+  "gbm", hyper_params = parameters,
+y = y, x = x, distribution="multinomial",
+training_frame = h2o_data_train, validation_frame =
+    h2o_data_valid, seed = 123)
+```
+### Find the best parameters for learn rate, max depth and ntrees.
+
+```{r}
+grid_gbm_1@grid_id
+```
+
+
+```{r}
+gbm_sort_1 <- h2o.getGrid(grid_id = "g1",
+                             sort_by = "logloss",
+                             decreasing = F)
+```
+
+```{r}
+gbm_sort_1
+```
+
+#### Best model with learn rate 0.2, max depth 4 and ntrees 50 with log loss 0.18
+```{r}
+h2o_best_gbm <- h2o.getModel(gbm_sort_1@model_ids[[1]])
+```
+
+#### summary of gbm
+```{r}
+h2o_best_gbm
+```
+#### confusion matrics 
+
+```{r}
+h2o.confusionMatrix(h2o_best_gbm, valid = F)
+h2o.confusionMatrix(h2o_best_gbm, valid = T)
+```
+
+
+
+
+
+### Train GBM with top 10 important features
+```{r}
+ntrees_opt <- c(50,100,150,200,300)
+maxdepth_opt <- c(3,4,5,6,7)
+learnrate_opt <- c(0.1,0.2)
+
+parameters <- list(ntrees=ntrees_opt,
+    max_depth=maxdepth_opt, learn_rate=learnrate_opt)
+
+grid_gbm_2 <- h2o.grid(grid_id = "g2",
+  "gbm", hyper_params = parameters,
+y = y, x = c("ram","battery_power","px_height", "px_width","mobile_wt", "int_memory", "m_dep", "n_cores",
+             "talk_time", "fc"), distribution="multinomial",
+training_frame = h2o_data_train, validation_frame =
+    h2o_data_valid, seed = 123)
+```
+
+```{r}
+grid_gbm_2@grid_id
+```
+
+```{r}
+gbm_sort_2 <- h2o.getGrid(grid_id = "g2",
+                             sort_by = "logloss",
+                             decreasing = F)
+```
+
+```{r}
+gbm_sort_2
+```
+
+```{r}
+h2o_best_gbm_red <- h2o.getModel(gbm_sort_2@model_ids[[1]])
+```
+
+#### summary of the gbm with feature selections(top important 10)
+```{r}
+h2o_best_gbm_red 
+```
+
+#### confusion matrics
+```{r}
+h2o.confusionMatrix(h2o_best_gbm_red , valid = F)
+h2o.confusionMatrix(h2o_best_gbm_red , valid = T)
+```
+
+### Random Forest
+
+```{r}
+h2o_fit_rf<- h2o.randomForest(x = x, y = y, training_frame = h2o_data_train, validation_frame = h2o_data_valid, model_id = "RF_1", distribution = "multinomial")
+h2o_fit_rf
+```
+#### Confusion Matrix
+```{r}
+h2o.confusionMatrix(h2o_fit_rf, valid = F)
+h2o.confusionMatrix(h2o_fit_rf, valid = T)
+```
+
+
+### Grid Search
+```{r}
+
+ntrees_opt <- c(200,300,500,1000)
+maxdepth_opt <- c(5,6,7,8,9)
+
+
+parameters <- list(ntrees=ntrees_opt,
+    max_depth=maxdepth_opt)
+
+grid_rf <- h2o.grid(grid_id = "RF_2",
+  "randomForest", hyper_params = parameters,
+y = y, x = x, distribution="multinomial",
+training_frame = h2o_data_train, validation_frame =
+    h2o_data_valid, seed = 123)
+```
+
+```{r}
+rf_sort <- h2o.getGrid(grid_id = "RF_2",
+                             sort_by = "logloss",
+                             decreasing = F)
+```
+
+```{r}
+rf_sort 
+```
+
+```{r}
+h2o_best_rf <- h2o.getModel(gbm_sort_2@model_ids[[1]])
+```
+
+```{r}
+h2o_best_rf
+```
+Confusion Matrics
+```{r}
+h2o.confusionMatrix(h2o_best_rf, valid = F)
+h2o.confusionMatrix(h2o_best_rf, valid = T)
+```
+
+
+# Conclusion
+```{r}
+error_df <- tibble(model = c("GLM", "GMB","RF"), validation_error = c("0.0191","0.0526","0.0574"))
+error_df
+error_df %>%
+  ggplot(aes(x = model, y = validation_error)) +
+  geom_col(aes(fill = model))
+```
+
+### The best model is GLM, make prediction using GLM regularization
+```{r}
+pred_h2o <- h2o.predict(object = h2o_fit_glm_ref, newdata = h2o_data_test)
+```
+
+```{r}
+perf = h2o.performance(h2o_fit_glm_ref, h2o_data_test)
+perf
+```
+
+```{r}
+h2o.confusionMatrix(perf)
+```
